@@ -36,7 +36,7 @@ data "azurerm_service_plan" "shared" {
 
 module "storage" {
   source              = "./modules/storage"
-  owner               = var.owner               # passage des variables
+  owner               = var.owner # passage des variables
   resource_group_name = data.azurerm_resource_group.rg.name
   location            = var.location
   tags                = local.tags
@@ -45,7 +45,7 @@ module "storage" {
 # ── App Service ───────────────────────────────────────────────────────────────
 
 module "app_service" {
-  source = "./modules/app-service"
+  source              = "./modules/app-service"
   owner               = var.owner
   resource_group_name = data.azurerm_resource_group.rg.name
   service_plan_id     = data.azurerm_service_plan.shared.id
@@ -55,7 +55,7 @@ module "app_service" {
 # ── Function App ──────────────────────────────────────────────────────────────
 
 module "function_app" {
-  source = "./modules/function-app"
+  source              = "./modules/function-app"
   owner               = var.owner
   resource_group_name = data.azurerm_resource_group.rg.name
   location            = var.location
@@ -66,7 +66,7 @@ module "function_app" {
 # ── Container Instance ────────────────────────────────────────────────────────
 
 module "container" {
-  source = "./modules/container"
+  source              = "./modules/container"
   owner               = var.owner
   resource_group_name = data.azurerm_resource_group.rg.name
   location            = var.location
