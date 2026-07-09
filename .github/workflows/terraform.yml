@@ -11,6 +11,10 @@ permissions:
 jobs:
   terraform:
     runs-on: ubuntu-latest
+    env:
+      RGROUP: ${{ vars.TF_RGROUP }}
+      SA_BACKEND: ${{ vars.TF_SA_BACKEND }}
+      OWNER: ${{ vars.TF_OWNER }}
 
     defaults:
       run:
@@ -36,7 +40,12 @@ jobs:
         run: terraform fmt -check
 
       - name: Terraform Init
-        run: terraform init
+        run: terraform init \
+            -backend-config="resource_group_name=${RGROUP}" \
+            -backend-config="storage_account_name=${SA_BACKEND}" \
+            -backend-config="container_name=tfstate" \
+            -backend-config="key=${OWNER}.terraform.tfstate" \
+            -migrate-state
         env:
           ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
