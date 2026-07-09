@@ -18,3 +18,10 @@ az storage blob list \
   --container-name "tfstate" \
   --account-name   "$SA_BACKEND" \
   --output         table
+
+terraform init \
+  -backend-config="resource_group_name=${RG_BACKEND}" \
+  -backend-config="storage_account_name=${SA_BACKEND}" \
+  -backend-config="container_name=tfstate" \
+  -backend-config="key=${OWNER}.terraform.tfstate" \
+  -migrate-state
