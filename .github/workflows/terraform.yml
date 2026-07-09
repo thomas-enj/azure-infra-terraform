@@ -20,6 +20,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Debug repo
+        run: |
+          echo "PWD: $(pwd)"
+          echo "Root files:"
+          ls -la
+          echo "terraform folder listing:"
+          ls -la terraform || true
+        working-directory: .
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
