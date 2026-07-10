@@ -74,7 +74,7 @@ module "container" {
 # ── Network (Étape 7) ─────────────────────────────────────────────────────────
 
 module "network" {
-  source = "./modules/network"
+  source              = "./modules/network"
   owner               = var.owner
   resource_group_name = data.azurerm_resource_group.rg.name
   location            = var.location
