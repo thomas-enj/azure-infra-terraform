@@ -5,6 +5,14 @@ on:
     branches: [ "main" ]
   push:
     branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        type: choice
+        options:
+          - destroy
 
 permissions:
   id-token: write
@@ -156,7 +164,7 @@ jobs:
         run: terraform apply -auto-approve
 
   destroy:
-    needs: apply
+    if: inputs.action == 'destroy'
     runs-on: ubuntu-latest
     environment: tf-destroy
     defaults:
