@@ -3,7 +3,7 @@ name: Terraform plan on PR
 on:
   pull_request:
     branches: [ "main" ]
-push:
+  push:
     branches: [ "main" ]
 
 permissions:
@@ -53,6 +53,7 @@ jobs:
         continue-on-error: true
 
       - name: Terraform Init
+        id: init
         run: |
           terraform init \
             -backend-config="resource_group_name=${RGROUP}" \
