@@ -67,7 +67,18 @@ jobs:
 
       - name: Terraform Plan
         id: plan
-        run: terraform plan
+        run: |
+          # The plan is launched with the colors (for CI logs) and saved
+          terraform plan -out=tfplan
+          
+          # The result is displayed in black text for the comment
+          PLAN_TEXT=$(terraform show -no-color tfplan)
+          
+          # Required syntax to safely pass a multi-line string to GITHUB_OUTPUT
+          delimiter="$(openssl rand -hex 8)"
+          echo "clean_plan<<${delimiter}" >> $GITHUB_OUTPUT
+          echo "$PLAN_TEXT" >> $GITHUB_OUTPUT
+          echo "${delimiter}" >> $GITHUB_OUTPUT
         continue-on-error: true
 
       - name: Comment PR with Terraform Plan
