@@ -1,0 +1,8 @@
+repos:
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.96.1 # Vérifie si une version plus récente existe si besoin
+    hooks:
+      - id: terraform_fmt
+      - id: terraform_tflint
+        args:
+          - --args=--chdir=terraform/
