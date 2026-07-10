@@ -10,14 +10,22 @@ az storage account create \
   --location       "francecentral" \
   --sku            Standard_LRS
 
+sleep 15
+
 az storage container create \
   --name         "tfstate" \
-  --account-name "$SA_BACKEND"
+  --account-name "$SA_BACKEND" \
+  --auth-mode    login
 
 az storage blob list \
   --container-name "tfstate" \
   --account-name   "$SA_BACKEND" \
+  --auth-mode    login \
   --output         table
+
+sleep 15
+
+cd terraform
 
 terraform init \
   -backend-config="resource_group_name=${RG_BACKEND}" \
