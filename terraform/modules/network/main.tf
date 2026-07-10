@@ -38,13 +38,6 @@ resource "azurerm_subnet" "backend" {
 }
 
 # Creation of a Network Security Group (NSG) with 3 rules for subnet-frontend
-# TODO (3/4) : créer un NSG avec 3 règles pour subnet-frontend
-#
-# Nom    : "nsg-frontend-${var.owner}-tf"
-# Règles : Allow-HTTP (100), Allow-HTTPS (110), Deny-All-Inbound (4000)
-#
-
-
 resource "azurerm_network_security_group" "nsg" {
   name                = "nsg-frontend-${var.owner}-tf"
   resource_group_name = var.resource_group_name
@@ -90,10 +83,6 @@ resource "azurerm_network_security_group" "nsg" {
 }
 
 # Association of the NSG to the subnet-frontend
-# TODO (4/4) : associer le NSG au subnet-frontend
-#
-
-
 resource "azurerm_subnet_network_security_group_association" "frontend_nsg" {
   subnet_id                 = azurerm_subnet.frontend.id
   network_security_group_id = azurerm_network_security_group.nsg.id
