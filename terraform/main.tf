@@ -1,7 +1,5 @@
 # ──────────────────────────────────────────────────────────────────────────────
 # main.tf — Ressources Azure à provisionner avec Terraform
-#
-# Ce fichier est votre point d'entrée. Complétez les TODO au fil du TP.
 # ──────────────────────────────────────────────────────────────────────────────
 
 # ── Tags communs à toutes les ressources ──────────────────────────────────────
@@ -74,14 +72,11 @@ module "container" {
 }
 
 # ── Network (Étape 7) ─────────────────────────────────────────────────────────
-# TODO : appeler le module "./modules/network"
-# Paramètres à passer : owner, resource_group_name, location, tags
 
-# module "network" {
-#   source = "./modules/network"
-#
-#   owner               = ???
-#   resource_group_name = ???
-#   location            = ???
-#   tags                = ???
-# }
+module "network" {
+  source = "./modules/network"
+  owner               = var.owner
+  resource_group_name = data.azurerm_resource_group.rg.name
+  location            = var.location
+  tags                = local.tags
+}
