@@ -15,9 +15,13 @@ resource "azurerm_container_group" "aci" {
   name                = "aci-${var.owner}-tf"
   resource_group_name = var.resource_group_name
   location            = var.location
-  ip_address_type     = "Public"
-  dns_name_label      = "aci-${var.owner}-tf"
+  ip_address_type     = "Private"
+  subnet_ids          = [var.subnet_id]
   os_type             = "Linux"
+
+  identity {
+    type = "SystemAssigned"
+  }
 
   container {
     name   = "nginx"

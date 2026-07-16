@@ -37,6 +37,8 @@ module "storage" {
   owner               = var.owner # passage des variables
   resource_group_name = data.azurerm_resource_group.rg.name
   location            = var.location
+  subnet_id           = module.network.subnet_backend_id
+  vnet_id             = module.network.vnet_id
   tags                = local.tags
 }
 
@@ -68,6 +70,7 @@ module "container" {
   owner               = var.owner
   resource_group_name = data.azurerm_resource_group.rg.name
   location            = var.location
+  subnet_id           = module.network.subnet_backend_id
   tags                = local.tags
 }
 

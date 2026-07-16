@@ -44,22 +44,10 @@ resource "azurerm_network_security_group" "nsg" {
   location            = var.location
   tags                = var.tags
 
-# Creation of security rules for the NSG
-  security_rule {
-    name                       = "Allow-HTTP"
-    priority                   = 100
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "80"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
-
+  # Creation of security rules for the NSG
   security_rule {
     name                       = "Allow-HTTPS"
-    priority                   = 110
+    priority                   = 100
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
@@ -85,5 +73,10 @@ resource "azurerm_network_security_group" "nsg" {
 # Association of the NSG to the subnet-frontend
 resource "azurerm_subnet_network_security_group_association" "frontend_nsg" {
   subnet_id                 = azurerm_subnet.frontend.id
+  network_security_group_id = azurerm_network_security_group.nsg.id
+}
+
+resource "azurerm_subnet_network_security_group_association" "backend_nsg" {
+  subnet_id                 = azurerm_subnet.backend.id
   network_security_group_id = azurerm_network_security_group.nsg.id
 }
