@@ -20,6 +20,7 @@ permissions:
   pull-requests: write
 
 env:
+  TERRAFORM_VERSION: 1.9.0
   ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
   ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
   ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
@@ -69,7 +70,7 @@ jobs:
         with:
           directory: ./terraform
           framework: terraform
-        continue-on-error: true
+        # continue-on-error: true # Should be usefull on push to no main branch, but not for PR on main branch
 
   tftest:
     name: Terraform Test
@@ -87,7 +88,7 @@ jobs:
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v4
         with:
-          terraform_version: 1.9.0
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
 
       - name: Az CLI login (OIDC)
         uses: azure/login@v3
@@ -124,7 +125,7 @@ jobs:
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v4
         with:
-          terraform_version: 1.9.0
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
 
       - name: Az CLI login (OIDC)
         uses: azure/login@v3
@@ -221,7 +222,7 @@ jobs:
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v4
         with:
-          terraform_version: 1.9.0
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
 
       - name: Az CLI login (OIDC)
         uses: azure/login@v3
@@ -257,7 +258,7 @@ jobs:
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v4
         with:
-          terraform_version: 1.9.0
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
 
       - name: Az CLI login (OIDC)
         uses: azure/login@v3
