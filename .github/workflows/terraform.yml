@@ -1,4 +1,4 @@
-name: Terraform plan on PR
+name: Terraform - Test, Plan, Apply & Destroy
 
 on:
   pull_request:
@@ -31,7 +31,7 @@ env:
   TF_VAR_resource_group_name: ${{ vars.TF_RGROUP }}
 
 jobs:
-  lint:
+  tflint:
     name: Terraform Linting
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
@@ -56,9 +56,46 @@ jobs:
       - name: Run TFLint
         run: tflint -f compact
 
+  tftest:
+    name: Terraform Test
+    needs: tflint
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./terraform
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.0
+
+      - name: Az CLI login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${RGROUP}" \
+            -backend-config="storage_account_name=${SA_BACKEND}" \
+            -backend-config="container_name=tfstate" \
+            -backend-config="key=${OWNER}.terraform.tfstate" \
+            -migrate-state
+
+      - name: Terraform Test
+        run: terraform test
+  
   plan:
     name: Terraform Plan
-    needs: lint
+    needs: tftest
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     defaults:
