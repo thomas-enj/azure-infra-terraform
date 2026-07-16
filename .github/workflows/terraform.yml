@@ -31,8 +31,34 @@ env:
   TF_VAR_resource_group_name: ${{ vars.TF_RGROUP }}
 
 jobs:
+  lint:
+    name: Terraform Linting
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./terraform
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: v0.52.0
+
+      - name: Init TFLint
+        run: tflint --init
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run TFLint
+        run: tflint -f compact
+
   plan:
     name: Terraform Plan
+    needs: lint
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     defaults:
