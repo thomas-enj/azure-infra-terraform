@@ -66,12 +66,115 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Run Checkov
+        id: checkov
         uses: bridgecrewio/checkov-action@master
         with:
           directory: ./terraform
           framework: terraform
-        continue-on-error: true # Should be usefull on push to no main branch, but not for PR on main branch
-                                # It's enabled here so that it doesn't become a roadblock during deployment testing
+          # Output to console for detailed log review and generate a SARIF file to capture severity levels
+          output_format: cli,sarif
+          # Map outputs respectively: 'cli' to stdout, 'sarif' to the specified file
+          output_file_path: console,checkov_report.sarif
+          # Ensure pipeline continues executing to allow reporting even if policy violations occur
+          soft_fail: true
+
+      - name: Publish Checkov Summary with Severities
+        if: always()
+        run: |
+          echo "### 🛡️ Checkov Security Scan Report" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f ./checkov_report.sarif ]; then
+            # Execute Python script to count metrics, sort results by severity, and format output stream
+            python3 -c '
+          import json
+          import urllib.request
+          
+          def fetch_severity_from_url(url):
+              if not url:
+                  return "UNKNOWN"
+              try:
+                  # Query the Prisma Cloud policy guideline page with a standard User-Agent header
+                  req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+                  with urllib.request.urlopen(req, timeout=5) as response:
+                      html = response.read().decode("utf-8").lower()
+                      
+                      # Look for common patterns highlighting severity levels in documentation HTML
+                      if "critical" in html: return "CRITICAL"
+                      elif "high" in html: return "HIGH"
+                      elif "medium" in html: return "MEDIUM"
+                      elif "low" in html: return "LOW"
+              except Exception:
+                  pass
+              return "UNKNOWN"
+          
+          with open("./checkov_report.sarif", "r") as f:
+              data = json.load(f)
+          
+          rule_meta = {}
+          for run in data.get("runs", []):
+              for rule in run.get("tool", {}).get("driver", {}).get("rules", []):
+                  help_url = rule.get("helpUri", "")
+                  severity = fetch_severity_from_url(help_url)
+                  
+                  rule_meta[rule["id"]] = {
+                      "severity": severity,
+                      "help_url": help_url
+                  }
+          
+          # Initialize severity weights and counter dictionary
+          severity_weights = {"CRITICAL": 4, "HIGH": 3, "MEDIUM": 2, "LOW": 1, "UNKNOWN": 0}
+          counts = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0}
+          report_rows = []
+          total_findings = 0
+          
+          for run in data.get("runs", []):
+              for result in run.get("results", []):
+                  rule_id = result.get("ruleId")
+                  meta = rule_meta.get(rule_id, {"severity": "UNKNOWN", "help_url": ""})
+                  severity = meta["severity"]
+                  help_url = meta["help_url"]
+                  
+                  # Increment counters
+                  counts[severity] = counts.get(severity, 0) + 1
+                  total_findings += 1
+                  
+                  file_path = result["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
+                  base_desc = result["message"]["text"].replace("\n", " ")
+                  
+                  if help_url:
+                      description = f"{base_desc} ([Guideline]({help_url}))"
+                  else:
+                      description = base_desc
+                  
+                  report_rows.append({
+                      "weight": severity_weights.get(severity, 0),
+                      "markdown": f"| **{severity}** | `{rule_id}` | {file_path} | {description} |"
+                  })
+          
+          # Extract values into standard variables to avoid inner quote escaping issues entirely
+          c_crit = counts.get("CRITICAL", 0)
+          c_high = counts.get("HIGH", 0)
+          c_med  = counts.get("MEDIUM", 0)
+          c_low  = counts.get("LOW", 0)
+          c_unk  = counts.get("UNKNOWN", 0)
+          
+          summary_text = f"**CRITICAL** = {c_crit}, **HIGH** = {c_high}, **MEDIUM** = {c_med}, **LOW** = {c_low}, **UNKNOWN** = {c_unk} | **Total** = {total_findings}"
+          print(summary_text)
+          print("\n---")
+          
+          # Print Markdown table headers
+          print("| Severity | Check ID | File | Description |")
+          print("|--- |--- |--- |--- |")
+          
+          # Sort rows seamlessly in descending order based on precedence weight
+          report_rows.sort(key=lambda x: x["weight"], reverse=True)
+          
+          for row in report_rows:
+              print(row["markdown"])
+            ' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No policy violations or artifact files detected." >> $GITHUB_STEP_SUMMARY
+          fi
 
   tftest:
     name: Terraform Test
