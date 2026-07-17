@@ -71,16 +71,23 @@ jobs:
         with:
           directory: ./terraform
           framework: terraform
-          # Generates a table format including the "Severity" column
-          output_format: github_failed_only
+          # Output to console for detailed log review and generate a markdown file for the summary
+          output_format: cli,github_failed_only
+          # Map outputs respectively: 'cli' to stdout, 'github_failed_only' to the specified file
+          output_file_path: console,checkov_report.md
           # Prevents the pipeline from breaking if errors are found
           soft_fail: true
 
-      - name: Display severity report in GitHub Summary
+      - name: Publish Checkov Summary
         if: always()
         run: |
-          # Inject the generated table directly into the GitHub run summary page
-          cat ./terraform/results_github_failed_only.md >> $GITHUB_STEP_SUMMARY
+          # Append the generated security report to the GitHub Actions workflow summary
+          if [ -f ./checkov_report.md ]; then
+            cat ./checkov_report.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ⚠️ Checkov Scan Summary" >> $GITHUB_STEP_SUMMARY
+            echo "No policy violations or report file found." >> $GITHUB_STEP_SUMMARY
+          fi
 
   tftest:
     name: Terraform Test
