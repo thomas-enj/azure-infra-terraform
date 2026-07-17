@@ -12,14 +12,24 @@ terraform {
 
 # Creation of a storage account for the application
 resource "azurerm_storage_account" "sa" {
-  name                            = "st${replace(var.owner, "-", "")}tf"
-  resource_group_name             = var.resource_group_name
-  location                        = var.location
-  account_tier                    = "Standard"
-  account_replication_type        = "LRS"
-  account_kind                    = "StorageV2"
-  min_tls_version                 = "TLS1_2"
-  allow_nested_items_to_be_public = true   # true pour permettre api-config public
+  name                     = "st${replace(var.owner, "-", "")}tf"
+  resource_group_name      = var.resource_group_name
+  location                 = var.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+  account_kind             = "StorageV2"
+  min_tls_version          = "TLS1_2"
+
+  identity {
+    type = "SystemAssigned"
+  }
+
+  customer_managed_key {
+    key_vault_key_id          = var.key_vault_key_id
+    user_assigned_identity_id = null
+  }
+
+  allow_nested_items_to_be_public = true # true pour permettre api-config public
   tags                            = var.tags
 }
 

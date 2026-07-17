@@ -30,6 +30,34 @@ data "azurerm_service_plan" "shared" {
   resource_group_name = var.shared_rg_name
 }
 
+data "azurerm_client_config" "current" {}
+
+resource "azurerm_key_vault" "cmk" {
+  name                       = "kv${replace(var.owner, "-", "")}tf"
+  location                   = var.location
+  resource_group_name        = data.azurerm_resource_group.rg.name
+  tenant_id                  = data.azurerm_client_config.current.tenant_id
+  sku_name                   = "standard"
+  soft_delete_retention_days = 7
+  purge_protection_enabled   = false
+  access_policy              = []
+}
+
+resource "azurerm_key_vault_key" "cmk" {
+  name         = "key-${replace(var.owner, "-", "")}"
+  key_vault_id = azurerm_key_vault.cmk.id
+  key_type     = "RSA"
+  key_size     = 2048
+  key_opts = [
+    "decrypt",
+    "encrypt",
+    "sign",
+    "unwrapKey",
+    "verify",
+    "wrapKey"
+  ]
+}
+
 # ── Storage ───────────────────────────────────────────────────────────────────
 
 module "storage" {
@@ -38,6 +66,7 @@ module "storage" {
   resource_group_name = data.azurerm_resource_group.rg.name
   location            = var.location
   tags                = local.tags
+  key_vault_key_id    = azurerm_key_vault_key.cmk.id
 }
 
 # ── App Service ───────────────────────────────────────────────────────────────
@@ -59,6 +88,31 @@ module "function_app" {
   location            = var.location
   service_plan_id     = data.azurerm_service_plan.shared.id
   tags                = local.tags
+  key_vault_key_id    = azurerm_key_vault_key.cmk.id
+}
+
+resource "azurerm_key_vault_access_policy" "storage_account" {
+  key_vault_id = azurerm_key_vault.cmk.id
+  tenant_id    = data.azurerm_client_config.current.tenant_id
+  object_id    = module.storage.storage_account_principal_id
+
+  key_permissions = [
+    "get",
+    "wrapKey",
+    "unwrapKey",
+  ]
+}
+
+resource "azurerm_key_vault_access_policy" "function_app_storage_account" {
+  key_vault_id = azurerm_key_vault.cmk.id
+  tenant_id    = data.azurerm_client_config.current.tenant_id
+  object_id    = module.function_app.storage_account_principal_id
+
+  key_permissions = [
+    "get",
+    "wrapKey",
+    "unwrapKey",
+  ]
 }
 
 # ── Container Instance ────────────────────────────────────────────────────────

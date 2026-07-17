@@ -17,8 +17,19 @@ resource "azurerm_storage_account" "fn_storage" {
   location                 = var.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
+  account_kind             = "StorageV2"
   min_tls_version          = "TLS1_2"
-  tags                     = merge(var.tags, { purpose = "function-storage" })
+
+  identity {
+    type = "SystemAssigned"
+  }
+
+  customer_managed_key {
+    key_vault_key_id          = var.key_vault_key_id
+    user_assigned_identity_id = null
+  }
+
+  tags = merge(var.tags, { purpose = "function-storage" })
 }
 
 # Documentation : https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/linux_function_app
