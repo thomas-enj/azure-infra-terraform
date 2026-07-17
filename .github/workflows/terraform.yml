@@ -84,10 +84,11 @@ jobs:
           echo "### 🛡️ Checkov Security Scan Report" >> $GITHUB_STEP_SUMMARY
           
           if [ -f ./checkov_report.sarif ]; then
-            # Execute Python script to count metrics, sort results by severity, and format output stream
+            # Execute Python script to count metrics, sort results, and conditionally raise exit codes
             python3 -c '
           import json
           import urllib.request
+          import sys
           
           def fetch_severity_from_url(url):
               if not url:
@@ -171,6 +172,11 @@ jobs:
           
           for row in report_rows:
               print(row["markdown"])
+          
+          # Enforce security gates: hard fail the step if CRITICAL or HIGH threats are detected
+          if c_crit > 0 or c_high > 0:
+              print(f"\n❌ Pipeline blocked: Found {c_crit} CRITICAL and {c_high} HIGH security violations.", file=sys.stderr)
+              sys.exit(1)
             ' >> $GITHUB_STEP_SUMMARY
           else
             echo "No policy violations or artifact files detected." >> $GITHUB_STEP_SUMMARY
