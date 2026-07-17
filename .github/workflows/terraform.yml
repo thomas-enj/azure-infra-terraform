@@ -66,12 +66,21 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Run Checkov
+        id: checkov
         uses: bridgecrewio/checkov-action@master
         with:
           directory: ./terraform
           framework: terraform
-        continue-on-error: true # Should be usefull on push to no main branch, but not for PR on main branch
-                                # It's enabled here so that it doesn't become a roadblock during deployment testing
+          # Generates a table format including the "Severity" column
+          output_format: github_failed_only
+          # Prevents the pipeline from breaking if errors are found
+          soft_fail: true
+
+      - name: Display severity report in GitHub Summary
+        if: always()
+        run: |
+          # Inject the generated table directly into the GitHub run summary page
+          cat ./terraform/results_github_failed_only.md >> $GITHUB_STEP_SUMMARY
 
   tftest:
     name: Terraform Test
