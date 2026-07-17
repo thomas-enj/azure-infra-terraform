@@ -134,7 +134,7 @@ jobs:
                   severity = meta["severity"]
                   help_url = meta["help_url"]
                   
-                  # Increment counters
+                  # Increment counters securely using double quotes
                   counts[severity] = counts.get(severity, 0) + 1
                   total_findings += 1
                   
@@ -151,8 +151,8 @@ jobs:
                       "markdown": f"| **{severity}** | `{rule_id}` | {file_path} | {description} |"
                   })
           
-          # Print the requested summary row using standard bold accents
-          summary_text = f"**CRITICAL** = {counts['CRITICAL']}, **HIGH** = {counts['HIGH']}, **MEDIUM** = {counts['MEDIUM']}, **LOW** = {counts['LOW']}, **UNKNOWN** = {counts['UNKNOWN']} | **Total** = {total_findings}"
+          # Print the requested summary row using double quoted keys to prevent character escaping crashes
+          summary_text = f"**CRITICAL** = {counts[\"CRITICAL\"]}, **HIGH** = {counts[\"HIGH\"]}, **MEDIUM** = {counts[\"MEDIUM\"]}, **LOW** = {counts[\"LOW\"]}, **UNKNOWN** = {counts[\"UNKNOWN\"]} | **Total** = {total_findings}"
           print(summary_text)
           print("\n---")
           
