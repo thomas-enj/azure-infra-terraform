@@ -88,9 +88,29 @@ jobs:
             echo "| Severity | Check ID | File | Description |" >> $GITHUB_STEP_SUMMARY
             echo "|--- |--- |--- |--- |" >> $GITHUB_STEP_SUMMARY
             
-            # Execute Python script to reliably parse SARIF objects and merge severity records with rule documentation hyperlinks
+            # Execute Python script to dynamically fetch severities from each guideline URL or fallback strictly to UNKNOWN
             python3 -c '
-          import json, os
+          import json
+          import urllib.request
+          import re
+          
+          def fetch_severity_from_url(url):
+              if not url:
+                  return "UNKNOWN"
+              try:
+                  # Query the Prisma Cloud policy guideline page with a standard User-Agent header
+                  req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+                  with urllib.request.urlopen(req, timeout=5) as response:
+                      html = response.read().decode("utf-8").lower()
+                      
+                      # Look for common patterns highlighting severity levels in documentation HTML (e.g., "Severity: High")
+                      if "critical" in html: return "CRITICAL"
+                      elif "high" in html: return "HIGH"
+                      elif "medium" in html: return "MEDIUM"
+                      elif "low" in html: return "LOW"
+              except Exception:
+                  pass
+              return "UNKNOWN"
           
           with open("./checkov_report.sarif", "r") as f:
               data = json.load(f)
@@ -98,33 +118,24 @@ jobs:
           rule_meta = {}
           for run in data.get("runs", []):
               for rule in run.get("tool", {}).get("driver", {}).get("rules", []):
+                  help_url = rule.get("helpUri", "")
+                  # Dynamically fetch severity based on the official documentation url
+                  severity = fetch_severity_from_url(help_url)
+                  
                   rule_meta[rule["id"]] = {
-                      "severity": rule.get("properties", {}).get("security-severity", "UNKNOWN"),
-                      "help_url": rule.get("helpUri", "")
+                      "severity": severity,
+                      "help_url": help_url
                   }
           
               for result in run.get("results", []):
                   rule_id = result.get("ruleId")
                   meta = rule_meta.get(rule_id, {"severity": "UNKNOWN", "help_url": ""})
-                  score = meta["severity"]
+                  severity = meta["severity"]
                   help_url = meta["help_url"]
-                  
-                  if score == "UNKNOWN":
-                      severity = "UNKNOWN"
-                  else:
-                      try:
-                          val = float(score)
-                          if val >= 9.0: severity = "CRITICAL"
-                          elif val >= 7.0: severity = "HIGH"
-                          elif val >= 4.0: severity = "MEDIUM"
-                          else: severity = "LOW"
-                      except ValueError:
-                          severity = "UNKNOWN"
                   
                   file_path = result["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
                   base_desc = result["message"]["text"].replace("\n", " ")
                   
-                  # Format the description column to embed the guideline hyperlink if available
                   if help_url:
                       description = f"{base_desc} ([Guideline]({help_url}))"
                   else:
