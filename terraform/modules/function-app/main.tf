@@ -11,6 +11,7 @@ terraform {
 # Documentation : https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/storage_account
 
 # Create a storage account dedicated to the Function App (not included in the storage module)
+# checkov:skip=CKV2_AZURE_1:Storage account is dedicated to Function App runtime and does not hold critical business data.
 resource "azurerm_storage_account" "fn_storage" {
   name                     = "stfn${replace(var.owner, "-", "")}"
   resource_group_name      = var.resource_group_name
