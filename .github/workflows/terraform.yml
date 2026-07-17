@@ -81,6 +81,7 @@ jobs:
       - name: Publish Checkov Summary with Severities
         if: always()
         run: |
+          |
           echo "### 🛡️ Checkov Security Scan Report" >> $GITHUB_STEP_SUMMARY
           
           if [ -f ./checkov_report.sarif ]; then
@@ -88,10 +89,19 @@ jobs:
             echo "| Severity | Check ID | File | Description |" >> $GITHUB_STEP_SUMMARY
             echo "|--- |--- |--- |--- |" >> $GITHUB_STEP_SUMMARY
             
-            # Extract and parse security metadata from SARIF schema using jq to reconstruct the report with explicit severity records
-            jq -r '.runs[].results[] | 
-              "| **" + (.level | ascii_upcase) + "** | `" + .ruleId + "` | " + .locations[0].physicalLocation.artifactLocation.uri + " | " + .message.text + " |"' \
-              ./checkov_report.sarif >> $GITHUB_STEP_SUMMARY
+            # Parse rules to build a dynamic severity map, then generate precise Markdown rows
+            jq -r '
+              (.runs[].tool.driver.rules // []) as $rules |
+              reduce $rules[] as $rule ({}; .[$rule.id] = ($rule.properties["security-severity"] // "UNKNOWN")) as $severity_map |
+              .runs[].results[] |
+              ($severity_map[.ruleId] // "UNKNOWN") as $score |
+              (if $score == "UNKNOWN" then "UNKNOWN"
+               elif ($score | tonumber) >= 9.0 then "CRITICAL"
+               elif ($score | tonumber) >= 7.0 then "HIGH"
+               elif ($score | tonumber) >= 4.0 then "MEDIUM"
+               else "LOW" end) as $severity |
+              "| **" + $severity + "** | `" + .ruleId + "` | " + .locations[0].physicalLocation.artifactLocation.uri + " | " + .message.text + " |"
+            ' ./checkov_report.sarif >> $GITHUB_STEP_SUMMARY
           else
             echo "No policy violations or artifact files detected." >> $GITHUB_STEP_SUMMARY
           fi
