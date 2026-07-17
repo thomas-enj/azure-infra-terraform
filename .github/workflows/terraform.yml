@@ -90,7 +90,7 @@ jobs:
             
             # Extract and parse security metadata from SARIF schema using jq to reconstruct the report with explicit severity records
             jq -r '.runs[].results[] | 
-              "| **" + (.level | upcase) + "** | `" + .ruleId + "` | " + .locations[0].physicalLocation.artifactLocation.uri + " | " + .message.text + " |"' \
+              "| **" + (.level | ascii_upcase) + "** | `" + .ruleId + "` | " + .locations[0].physicalLocation.artifactLocation.uri + " | " + .message.text + " |"' \
               ./checkov_report.sarif >> $GITHUB_STEP_SUMMARY
           else
             echo "No policy violations or artifact files detected." >> $GITHUB_STEP_SUMMARY
