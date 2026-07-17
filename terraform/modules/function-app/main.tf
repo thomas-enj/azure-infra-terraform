@@ -24,16 +24,9 @@ resource "azurerm_storage_account" "fn_storage" {
     type = "SystemAssigned"
   }
 
-  encryption {
-    services {
-      blob { enabled = true }
-      file { enabled = true }
-      queue { enabled = true }
-      table { enabled = true }
-    }
-
-    key_source       = "Microsoft.Keyvault"
-    key_vault_key_id = var.key_vault_key_id
+  customer_managed_key {
+    key_vault_key_id          = var.key_vault_key_id
+    user_assigned_identity_id = null
   }
 
   tags = merge(var.tags, { purpose = "function-storage" })

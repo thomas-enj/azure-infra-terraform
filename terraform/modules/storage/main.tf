@@ -24,16 +24,9 @@ resource "azurerm_storage_account" "sa" {
     type = "SystemAssigned"
   }
 
-  encryption {
-    services {
-      blob { enabled = true }
-      file { enabled = true }
-      queue { enabled = true }
-      table { enabled = true }
-    }
-
-    key_source       = "Microsoft.Keyvault"
-    key_vault_key_id = var.key_vault_key_id
+  customer_managed_key {
+    key_vault_key_id          = var.key_vault_key_id
+    user_assigned_identity_id = null
   }
 
   allow_nested_items_to_be_public = true # true pour permettre api-config public
