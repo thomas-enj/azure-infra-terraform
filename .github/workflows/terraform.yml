@@ -81,7 +81,6 @@ jobs:
       - name: Publish Checkov Summary with Severities
         if: always()
         run: |
-          |
           echo "### 🛡️ Checkov Security Scan Report" >> $GITHUB_STEP_SUMMARY
           
           if [ -f ./checkov_report.sarif ]; then
