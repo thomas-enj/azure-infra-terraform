@@ -84,15 +84,10 @@ jobs:
           echo "### 🛡️ Checkov Security Scan Report" >> $GITHUB_STEP_SUMMARY
           
           if [ -f ./checkov_report.sarif ]; then
-            # Initialize Markdown table structure within the GitHub Actions workflow summary
-            echo "| Severity | Check ID | File | Description |" >> $GITHUB_STEP_SUMMARY
-            echo "|--- |--- |--- |--- |" >> $GITHUB_STEP_SUMMARY
-            
-            # Execute Python script to dynamically fetch severities from each guideline URL or fallback strictly to UNKNOWN
+            # Execute Python script to count metrics, sort results by severity, and format output stream
             python3 -c '
           import json
           import urllib.request
-          import re
           
           def fetch_severity_from_url(url):
               if not url:
@@ -103,7 +98,7 @@ jobs:
                   with urllib.request.urlopen(req, timeout=5) as response:
                       html = response.read().decode("utf-8").lower()
                       
-                      # Look for common patterns highlighting severity levels in documentation HTML (e.g., "Severity: High")
+                      # Look for common patterns highlighting severity levels in documentation HTML
                       if "critical" in html: return "CRITICAL"
                       elif "high" in html: return "HIGH"
                       elif "medium" in html: return "MEDIUM"
@@ -119,7 +114,6 @@ jobs:
           for run in data.get("runs", []):
               for rule in run.get("tool", {}).get("driver", {}).get("rules", []):
                   help_url = rule.get("helpUri", "")
-                  # Dynamically fetch severity based on the official documentation url
                   severity = fetch_severity_from_url(help_url)
                   
                   rule_meta[rule["id"]] = {
@@ -127,11 +121,22 @@ jobs:
                       "help_url": help_url
                   }
           
+          # Initialize severity weights and counter dictionary
+          severity_weights = {"CRITICAL": 4, "HIGH": 3, "MEDIUM": 2, "LOW": 1, "UNKNOWN": 0}
+          counts = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0}
+          report_rows = []
+          total_findings = 0
+          
+          for run in data.get("runs", []):
               for result in run.get("results", []):
                   rule_id = result.get("ruleId")
                   meta = rule_meta.get(rule_id, {"severity": "UNKNOWN", "help_url": ""})
                   severity = meta["severity"]
                   help_url = meta["help_url"]
+                  
+                  # Increment counters
+                  counts[severity] = counts.get(severity, 0) + 1
+                  total_findings += 1
                   
                   file_path = result["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
                   base_desc = result["message"]["text"].replace("\n", " ")
@@ -141,7 +146,25 @@ jobs:
                   else:
                       description = base_desc
                   
-                  print(f"| **{severity}** | `{rule_id}` | {file_path} | {description} |")
+                  report_rows.append({
+                      "weight": severity_weights.get(severity, 0),
+                      "markdown": f"| **{severity}** | `{rule_id}` | {file_path} | {description} |"
+                  })
+          
+          # Print the requested summary row using standard bold accents
+          summary_text = f"**CRITICAL** = {counts['CRITICAL']}, **HIGH** = {counts['HIGH']}, **MEDIUM** = {counts['MEDIUM']}, **LOW** = {counts['LOW']}, **UNKNOWN** = {counts['UNKNOWN']} | **Total** = {total_findings}"
+          print(summary_text)
+          print("\n---")
+          
+          # Print Markdown table headers
+          print("| Severity | Check ID | File | Description |")
+          print("|--- |--- |--- |--- |")
+          
+          # Sort rows seamlessly in descending order based on precedence weight
+          report_rows.sort(key=lambda x: x["weight"], reverse=True)
+          
+          for row in report_rows:
+              print(row["markdown"])
             ' >> $GITHUB_STEP_SUMMARY
           else
             echo "No policy violations or artifact files detected." >> $GITHUB_STEP_SUMMARY
