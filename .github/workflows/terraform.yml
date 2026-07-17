@@ -88,19 +88,50 @@ jobs:
             echo "| Severity | Check ID | File | Description |" >> $GITHUB_STEP_SUMMARY
             echo "|--- |--- |--- |--- |" >> $GITHUB_STEP_SUMMARY
             
-            # Parse rules to build a dynamic severity map, then generate precise Markdown rows
-            jq -r '
-              (.runs[].tool.driver.rules // []) as $rules |
-              reduce $rules[] as $rule ({}; .[$rule.id] = ($rule.properties["security-severity"] // "UNKNOWN")) as $severity_map |
-              .runs[].results[] |
-              ($severity_map[.ruleId] // "UNKNOWN") as $score |
-              (if $score == "UNKNOWN" then "UNKNOWN"
-               elif ($score | tonumber) >= 9.0 then "CRITICAL"
-               elif ($score | tonumber) >= 7.0 then "HIGH"
-               elif ($score | tonumber) >= 4.0 then "MEDIUM"
-               else "LOW" end) as $severity |
-              "| **" + $severity + "** | `" + .ruleId + "` | " + .locations[0].physicalLocation.artifactLocation.uri + " | " + .message.text + " |"
-            ' ./checkov_report.sarif >> $GITHUB_STEP_SUMMARY
+            # Execute Python script to reliably parse SARIF objects and merge severity records with rule documentation hyperlinks
+            python3 -c '
+          import json, os
+          
+          with open("./checkov_report.sarif", "r") as f:
+              data = json.load(f)
+          
+          rule_meta = {}
+          for run in data.get("runs", []):
+              for rule in run.get("tool", {}).get("driver", {}).get("rules", []):
+                  rule_meta[rule["id"]] = {
+                      "severity": rule.get("properties", {}).get("security-severity", "UNKNOWN"),
+                      "help_url": rule.get("helpUri", "")
+                  }
+          
+              for result in run.get("results", []):
+                  rule_id = result.get("ruleId")
+                  meta = rule_meta.get(rule_id, {"severity": "UNKNOWN", "help_url": ""})
+                  score = meta["severity"]
+                  help_url = meta["help_url"]
+                  
+                  if score == "UNKNOWN":
+                      severity = "UNKNOWN"
+                  else:
+                      try:
+                          val = float(score)
+                          if val >= 9.0: severity = "CRITICAL"
+                          elif val >= 7.0: severity = "HIGH"
+                          elif val >= 4.0: severity = "MEDIUM"
+                          else: severity = "LOW"
+                      except ValueError:
+                          severity = "UNKNOWN"
+                  
+                  file_path = result["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
+                  base_desc = result["message"]["text"].replace("\n", " ")
+                  
+                  # Format the description column to embed the guideline hyperlink if available
+                  if help_url:
+                      description = f"{base_desc} ([Guideline]({help_url}))"
+                  else:
+                      description = base_desc
+                  
+                  print(f"| **{severity}** | `{rule_id}` | {file_path} | {description} |")
+            ' >> $GITHUB_STEP_SUMMARY
           else
             echo "No policy violations or artifact files detected." >> $GITHUB_STEP_SUMMARY
           fi
