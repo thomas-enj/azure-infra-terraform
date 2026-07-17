@@ -11,15 +11,32 @@ terraform {
 # Documentation : https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/storage_account
 
 # Create a storage account dedicated to the Function App (not included in the storage module)
-# checkov:skip=CKV2_AZURE_1:Storage account is dedicated to Function App runtime and does not hold critical business data.
 resource "azurerm_storage_account" "fn_storage" {
   name                     = "stfn${replace(var.owner, "-", "")}"
   resource_group_name      = var.resource_group_name
   location                 = var.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
+  account_kind             = "StorageV2"
   min_tls_version          = "TLS1_2"
-  tags                     = merge(var.tags, { purpose = "function-storage" })
+
+  identity {
+    type = "SystemAssigned"
+  }
+
+  encryption {
+    services {
+      blob { enabled = true }
+      file { enabled = true }
+      queue { enabled = true }
+      table { enabled = true }
+    }
+
+    key_source       = "Microsoft.Keyvault"
+    key_vault_key_id = var.key_vault_key_id
+  }
+
+  tags = merge(var.tags, { purpose = "function-storage" })
 }
 
 # Documentation : https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/linux_function_app

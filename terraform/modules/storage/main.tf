@@ -11,15 +11,31 @@ terraform {
 # Documentation : https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/storage_account
 
 # Creation of a storage account for the application
-# checkov:skip=CKV2_AZURE_1:Storage account is used for non-critical tf/api config and does not hold production critical business data.
 resource "azurerm_storage_account" "sa" {
-  name                            = "st${replace(var.owner, "-", "")}tf"
-  resource_group_name             = var.resource_group_name
-  location                        = var.location
-  account_tier                    = "Standard"
-  account_replication_type        = "LRS"
-  account_kind                    = "StorageV2"
-  min_tls_version                 = "TLS1_2"
+  name                     = "st${replace(var.owner, "-", "")}tf"
+  resource_group_name      = var.resource_group_name
+  location                 = var.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+  account_kind             = "StorageV2"
+  min_tls_version          = "TLS1_2"
+
+  identity {
+    type = "SystemAssigned"
+  }
+
+  encryption {
+    services {
+      blob { enabled = true }
+      file { enabled = true }
+      queue { enabled = true }
+      table { enabled = true }
+    }
+
+    key_source       = "Microsoft.Keyvault"
+    key_vault_key_id = var.key_vault_key_id
+  }
+
   allow_nested_items_to_be_public = true # true pour permettre api-config public
   tags                            = var.tags
 }
