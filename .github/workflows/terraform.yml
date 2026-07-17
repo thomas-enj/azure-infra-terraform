@@ -71,22 +71,29 @@ jobs:
         with:
           directory: ./terraform
           framework: terraform
-          # Output to console for detailed log review and generate a markdown file for the summary
-          output_format: cli,github_failed_only
-          # Map outputs respectively: 'cli' to stdout, 'github_failed_only' to the specified file
-          output_file_path: console,checkov_report.md
-          # Prevents the pipeline from breaking if errors are found
+          # Output to console for detailed log review and generate a SARIF file to capture severity levels
+          output_format: cli,sarif
+          # Map outputs respectively: 'cli' to stdout, 'sarif' to the specified file
+          output_file_path: console,checkov_report.sarif
+          # Ensure pipeline continues executing to allow reporting even if policy violations occur
           soft_fail: true
 
-      - name: Publish Checkov Summary
+      - name: Publish Checkov Summary with Severities
         if: always()
         run: |
-          # Append the generated security report to the GitHub Actions workflow summary
-          if [ -f ./checkov_report.md ]; then
-            cat ./checkov_report.md >> $GITHUB_STEP_SUMMARY
+          echo "### 🛡️ Checkov Security Scan Report" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f ./checkov_report.sarif ]; then
+            # Initialize Markdown table structure within the GitHub Actions workflow summary
+            echo "| Severity | Check ID | File | Description |" >> $GITHUB_STEP_SUMMARY
+            echo "|--- |--- |--- |--- |" >> $GITHUB_STEP_SUMMARY
+            
+            # Extract and parse security metadata from SARIF schema using jq to reconstruct the report with explicit severity records
+            jq -r '.runs[].results[] | 
+              "| **" + (.level | upcase) + "** | `" + .ruleId + "` | " + .locations[0].physicalLocation.artifactLocation.uri + " | " + .message.text + " |"' \
+              ./checkov_report.sarif >> $GITHUB_STEP_SUMMARY
           else
-            echo "### ⚠️ Checkov Scan Summary" >> $GITHUB_STEP_SUMMARY
-            echo "No policy violations or report file found." >> $GITHUB_STEP_SUMMARY
+            echo "No policy violations or artifact files detected." >> $GITHUB_STEP_SUMMARY
           fi
 
   tftest:
